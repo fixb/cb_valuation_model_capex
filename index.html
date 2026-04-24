@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convertible Bond Valuation — Capex Financing</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0a0e14;color:#e6edf3}
+.hdr{background:linear-gradient(135deg,#1a1e2e,#0a0e14);padding:20px 28px;border-bottom:1px solid #2d333b}
+.hdr h1{font-size:20px;font-weight:600;color:#79c0ff}
+.hdr p{font-size:12px;color:#8b949e;margin-top:3px}
+.wrap{max-width:1500px;margin:0 auto;padding:18px}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:18px}
+.pn{background:#161b22;border:1px solid #2d333b;border-radius:8px;padding:16px;margin-bottom:10px}
+.pn h2{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #2d333b}
+.c1{color:#79c0ff}.c2{color:#d2a8ff}.c3{color:#3fb950}.c4{color:#d29922}.c5{color:#f0883e}
+.ig{margin-bottom:9px}
+.ig label{display:block;font-size:11px;color:#8b949e;margin-bottom:2px}
+.ig input{width:100%;background:#0d1117;border:1px solid #2d333b;border-radius:5px;padding:6px 8px;color:#e6edf3;font-size:12px}
+.ig input:focus{border-color:#79c0ff;outline:none}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.btn{width:100%;padding:10px;border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;margin-top:5px}
+.b1{background:#1f6feb}.b1:hover{background:#388bfd}
+.b2{background:#2d333b;margin-top:4px}.b2:hover{background:#3d444d}
+.sep{border:none;border-top:1px solid #2d333b;margin:10px 0}
+.tc5{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:14px}
+.tc4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px}
+.tc3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px}
+.mc{background:#161b22;border:1px solid #2d333b;border-radius:8px;padding:13px;text-align:center}
+.mc .v{font-size:24px;font-weight:700;margin:2px 0}
+.mc .l{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.4px}
+.pos{color:#3fb950}.neg{color:#f85149}.neu{color:#79c0ff}.prp{color:#d2a8ff}.wrn{color:#d29922}.org{color:#f0883e}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.cb{background:#161b22;border:1px solid #2d333b;border-radius:8px;padding:13px}
+.cb h3{font-size:11px;color:#8b949e;margin-bottom:8px}
+canvas{max-height:250px}
+.at{width:100%;border-collapse:collapse}
+.at th,.at td{padding:5px 8px;text-align:left;border-bottom:1px solid #21262d;font-size:11px}
+.at th{color:#8b949e;font-weight:600;font-size:10px;text-transform:uppercase}
+.at td.n{text-align:right;font-family:'SF Mono',Consolas,monospace}
+.ft{text-align:center;padding:12px;color:#3d444d;font-size:10px}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}.tc5,.tc4{grid-template-columns:repeat(2,1fr)}.cg{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Convertible Bond Valuation Model — Capex Financing</h1>
+  <p>Price a CB issued to finance capital expenditure: bond floor + embedded option + capex NPV impact on equity</p>
+</div>
+<div class="wrap">
+<div class="grid">
+
+<!-- LEFT -->
+<div>
+  <div class="pn">
+    <h2 class="c1">Bond Terms</h2>
+    <div class="r2">
+      <div class="ig"><label>Face Value (€)</label><input type="number" id="face" value="100" step="1"></div>
+      <div class="ig"><label>Coupon (%)</label><input type="number" id="coupon" value="1.50" step="0.25"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Maturity (years)</label><input type="number" id="mat" value="5" step="0.5"></div>
+      <div class="ig"><label>Coupon Frequency</label>
+        <select id="freq" style="width:100%;background:#0d1117;border:1px solid #2d333b;border-radius:5px;padding:6px 8px;color:#e6edf3;font-size:12px">
+          <option value="2">Semi-Annual</option><option value="1">Annual</option><option value="4">Quarterly</option>
+        </select>
+      </div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Conversion Price (€)</label><input type="number" id="convPx" value="50" step="1"></div>
+      <div class="ig"><label>Current Stock Price (€)</label><input type="number" id="stockPx" value="38" step="1"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Soft Call Trigger (%)</label><input type="number" id="softCall" value="130" step="5"></div>
+      <div class="ig"><label>Soft Call After (yrs)</label><input type="number" id="softCallYr" value="3" step="0.5"></div>
+    </div>
+  </div>
+
+  <div class="pn">
+    <h2 class="c2">Market Parameters</h2>
+    <div class="r2">
+      <div class="ig"><label>Risk-Free Rate (%)</label><input type="number" id="rf" value="3.50" step="0.25"></div>
+      <div class="ig"><label>Credit Spread (bps)</label><input type="number" id="cs" value="300" step="25"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Equity Vol (%)</label><input type="number" id="vol" value="30" step="1"></div>
+      <div class="ig"><label>Dividend Yield (%)</label><input type="number" id="divY" value="0" step="0.5"></div>
+    </div>
+    <div class="ig"><label>Stock Borrow Cost (bps)</label><input type="number" id="borrow" value="50" step="10"></div>
+  </div>
+
+  <div class="pn">
+    <h2 class="c3">Capex Project</h2>
+    <div class="r2">
+      <div class="ig"><label>CB Issue Size (€m)</label><input type="number" id="issueSize" value="300" step="50"></div>
+      <div class="ig"><label>Capex Amount (€m)</label><input type="number" id="capex" value="280" step="10"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Project IRR (%)</label><input type="number" id="projIRR" value="15" step="1"></div>
+      <div class="ig"><label>WACC (%)</label><input type="number" id="wacc" value="9" step="0.5"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Ramp-up (years)</label><input type="number" id="rampUp" value="2" step="0.5"></div>
+      <div class="ig"><label>Cash Flow Duration (yrs)</label><input type="number" id="cfDur" value="15" step="1"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Shares Outstanding (m)</label><input type="number" id="sharesOut" value="200" step="10"></div>
+      <div class="ig"><label>Existing Market Cap (€m)</label><input type="number" id="mktCap" value="7600" step="100"></div>
+    </div>
+    <div class="ig"><label>Probability of Capex Success (%)</label><input type="number" id="capexProb" value="75" step="5"></div>
+  </div>
+
+  <div class="pn">
+    <h2 class="c5">Alternative Financing Comparison</h2>
+    <div class="r2">
+      <div class="ig"><label>Senior Debt Rate (%)</label><input type="number" id="seniorRate" value="6.5" step="0.25"></div>
+      <div class="ig"><label>Senior Debt Maturity (yrs)</label><input type="number" id="seniorMat" value="5" step="1"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Equity Issue Discount (%)</label><input type="number" id="eqDiscount" value="5" step="1"></div>
+      <div class="ig"><label>Equity Issuance Cost (%)</label><input type="number" id="eqIssueCost" value="3" step="0.5"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>CB Issuance Cost (%)</label><input type="number" id="cbIssueCost" value="2" step="0.5"></div>
+      <div class="ig"><label>Tax Rate (%)</label><input type="number" id="taxRate" value="25" step="1"></div>
+    </div>
+    <div class="ig"><label>Target Debt/Equity Ratio</label><input type="number" id="targetDE" value="0.4" step="0.05"></div>
+  </div>
+
+  <div class="pn">
+    <h2 style="color:#f47067">New Issue Impact Simulator</h2>
+    <div class="r2">
+      <div class="ig"><label>New Issue Size (€m)</label><input type="number" id="niSize" value="500" step="50"></div>
+      <div class="ig"><label>New Issue Premium (%)</label><input type="number" id="niPrem" value="30" step="5"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>New Issue Coupon (%)</label><input type="number" id="niCoupon" value="0.75" step="0.25"></div>
+      <div class="ig"><label>New Issue Maturity (yrs)</label><input type="number" id="niMat" value="5" step="1"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Same Issuer?</label>
+        <select id="niSameIssuer" style="width:100%;background:#0d1117;border:1px solid #2d333b;border-radius:5px;padding:6px 8px;color:#e6edf3;font-size:12px">
+          <option value="1">Yes — same company</option><option value="0">No — different issuer, same sector</option>
+        </select>
+      </div>
+      <div class="ig"><label>Vol Implied in New Issue (%)</label><input type="number" id="niVol" value="28" step="1"></div>
+    </div>
+    <div class="r2">
+      <div class="ig"><label>Market Absorption (days)</label><input type="number" id="niAbsorb" value="5" step="1"></div>
+      <div class="ig"><label>Existing CB Outstanding (€m)</label><input type="number" id="niExistSize" value="300" step="50"></div>
+    </div>
+    <div class="ig"><label>Arb Demand Elasticity (0-1)</label><input type="number" id="niArbElast" value="0.6" step="0.1" min="0" max="1"></div>
+  </div>
+
+  <div class="pn">
+    <h2 class="c4">Simulation</h2>
+    <div class="r2">
+      <div class="ig"><label>Binomial Steps</label><input type="number" id="steps" value="100" step="10"></div>
+      <div class="ig"><label>Scenario Stock Range (±%)</label><input type="number" id="scRange" value="60" step="10"></div>
+    </div>
+    <button class="btn b1" onclick="runModel()">Price Convertible</button>
+    <button class="btn b2" onclick="runCapexScenarios()">Run Capex Scenarios</button>
+    <button class="btn b2" onclick="runFinancingComp()" style="background:#5a3e1b">Compare Financing Options</button>
+    <button class="btn b2" onclick="runNewIssueImpact()" style="background:#5a1b1b">Simulate New Issue Impact</button>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div>
+  <!-- Valuation -->
+  <div class="tc5">
+    <div class="mc"><div class="l">Theoretical Value</div><div class="v neu" id="k-tv">—</div></div>
+    <div class="mc"><div class="l">Bond Floor</div><div class="v wrn" id="k-bf">—</div></div>
+    <div class="mc"><div class="l">Option Value</div><div class="v prp" id="k-ov">—</div></div>
+    <div class="mc"><div class="l">Conversion Premium</div><div class="v org" id="k-prem">—</div></div>
+    <div class="mc"><div class="l">Parity</div><div class="v pos" id="k-par">—</div></div>
+  </div>
+
+  <!-- Greeks -->
+  <div class="tc5">
+    <div class="mc"><div class="l">Delta</div><div class="v neu" id="k-delta">—</div></div>
+    <div class="mc"><div class="l">Gamma</div><div class="v prp" id="k-gamma">—</div></div>
+    <div class="mc"><div class="l">Vega (1 vol pt)</div><div class="v wrn" id="k-vega">—</div></div>
+    <div class="mc"><div class="l">Rho (100bps)</div><div class="v org" id="k-rho">—</div></div>
+    <div class="mc"><div class="l">Theta (€/day)</div><div class="v neg" id="k-theta">—</div></div>
+  </div>
+
+  <!-- Capex Impact -->
+  <div class="tc4">
+    <div class="mc"><div class="l">Capex NPV (€m)</div><div class="v pos" id="k-npv">—</div></div>
+    <div class="mc"><div class="l">NPV / Share (€)</div><div class="v pos" id="k-npvsh">—</div></div>
+    <div class="mc"><div class="l">Dilution (%)</div><div class="v neg" id="k-dil">—</div></div>
+    <div class="mc"><div class="l">Adj Stock (post capex)</div><div class="v neu" id="k-adjstk">—</div></div>
+  </div>
+
+  <!-- Decomposition & Arb Metrics -->
+  <div class="cg">
+    <div class="pn">
+      <h2 class="c1">Valuation Decomposition</h2>
+      <table class="at"><thead><tr><th>Component</th><th style="text-align:right">Value (€)</th><th style="text-align:right">% of TV</th></tr></thead>
+      <tbody id="decompBody"></tbody></table>
+    </div>
+    <div class="pn">
+      <h2 class="c2">Arbitrage Metrics</h2>
+      <table class="at"><thead><tr><th>Metric</th><th style="text-align:right">Value</th></tr></thead>
+      <tbody id="arbBody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="cg">
+    <div class="cb"><h3>CB Value vs Stock Price (Payoff Profile)</h3><canvas id="chPayoff"></canvas></div>
+    <div class="cb"><h3>Greeks vs Stock Price</h3><canvas id="chGreeks"></canvas></div>
+    <div class="cb"><h3>Capex Impact on CB Value</h3><canvas id="chCapex"></canvas></div>
+    <div class="cb"><h3>Sensitivity — CB Value vs Vol & Spread</h3><canvas id="chSens"></canvas></div>
+    <div class="cb"><h3>Scenario Analysis — Capex Outcomes</h3><canvas id="chScenario"></canvas></div>
+    <div class="cb"><h3>Yield-to-Maturity vs Stock Price</h3><canvas id="chYTM"></canvas></div>
+  </div>
+
+  <!-- Financing Comparison Section -->
+  <div class="pn" style="margin-top:4px">
+    <h2 class="c5">Financing Comparison: CB vs Senior Debt vs Equity</h2>
+    <div class="tc3" id="finCompCards">
+      <div class="mc" style="border-color:#79c0ff"><div class="l">Convertible Bond</div><div class="v neu" id="fin-cb">—</div><div class="l" id="fin-cb-sub">—</div></div>
+      <div class="mc" style="border-color:#f0883e"><div class="l">Senior Debt</div><div class="v org" id="fin-debt">—</div><div class="l" id="fin-debt-sub">—</div></div>
+      <div class="mc" style="border-color:#3fb950"><div class="l">Equity Raise</div><div class="v pos" id="fin-eq">—</div><div class="l" id="fin-eq-sub">—</div></div>
+    </div>
+    <div class="cg">
+      <div id="finTableWrap"></div>
+      <div class="cb"><h3>Cost of Capital Comparison Over Time</h3><canvas id="chFinComp"></canvas></div>
+    </div>
+    <div class="cg">
+      <div class="cb"><h3>EPS Impact by Financing Method</h3><canvas id="chEPS"></canvas></div>
+      <div class="cb"><h3>Dilution vs Cost Trade-off</h3><canvas id="chDilCost"></canvas></div>
+    </div>
+  </div>
+
+  <!-- New Issue Impact Section -->
+  <div class="pn" style="margin-top:4px">
+    <h2 style="color:#f47067">New Issue Impact on Existing CB</h2>
+    <div class="tc5" id="niCards">
+      <div class="mc" style="border-color:#f47067"><div class="l">Existing CB Before</div><div class="v neu" id="ni-before">—</div></div>
+      <div class="mc" style="border-color:#f47067"><div class="l">Existing CB After</div><div class="v" id="ni-after">—</div></div>
+      <div class="mc" style="border-color:#f47067"><div class="l">Price Impact</div><div class="v" id="ni-impact">—</div></div>
+      <div class="mc" style="border-color:#f47067"><div class="l">Vol Repricing</div><div class="v" id="ni-volrep">—</div></div>
+      <div class="mc" style="border-color:#f47067"><div class="l">Recovery (days)</div><div class="v wrn" id="ni-recov">—</div></div>
+    </div>
+    <div class="cg">
+      <div id="niTableWrap"></div>
+      <div class="cb"><h3>Price Impact Timeline (Existing CB)</h3><canvas id="chNITimeline"></canvas></div>
+    </div>
+    <div class="cg">
+      <div class="cb"><h3>Vol Surface Shift</h3><canvas id="chNIVol"></canvas></div>
+      <div class="cb"><h3>Impact by New Issue Size</h3><canvas id="chNISize"></canvas></div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+<div class="ft">Convertible Bond Capex Valuation Model — Built for FX Baud — April 2026</div>
+
+<script>
+let CH={};
+function dc(n){if(CH[n]){CH[n].destroy();delete CH[n]}}
+
+function P(){return{
+  face:+document.getElementById('face').value,
+  cpn:+document.getElementById('coupon').value/100,
+  mat:+document.getElementById('mat').value,
+  freq:+document.getElementById('freq').value,
+  convPx:+document.getElementById('convPx').value,
+  S:+document.getElementById('stockPx').value,
+  softCall:+document.getElementById('softCall').value/100,
+  softCallYr:+document.getElementById('softCallYr').value,
+  rf:+document.getElementById('rf').value/100,
+  cs:+document.getElementById('cs').value/10000,
+  vol:+document.getElementById('vol').value/100,
+  divY:+document.getElementById('divY').value/100,
+  borrow:+document.getElementById('borrow').value/10000,
+  issueSize:+document.getElementById('issueSize').value,
+  capex:+document.getElementById('capex').value,
+  projIRR:+document.getElementById('projIRR').value/100,
+  wacc:+document.getElementById('wacc').value/100,
+  rampUp:+document.getElementById('rampUp').value,
+  cfDur:+document.getElementById('cfDur').value,
+  sharesOut:+document.getElementById('sharesOut').value,
+  mktCap:+document.getElementById('mktCap').value,
+  capexProb:+document.getElementById('capexProb').value/100,
+  steps:+document.getElementById('steps').value,
+  scRange:+document.getElementById('scRange').value/100,
+}}
+
+// Normal CDF approximation
+function ncdf(x){const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+const s=x<0?-1:1;x=Math.abs(x)/Math.sqrt(2);const t=1/(1+p*x);const y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);return 0.5*(1+s*y)}
+
+// Bond floor: PV of coupons + face discounted at rf+cs
+function bondFloor(p){
+  const y=p.rf+p.cs;
+  const nPeriods=p.mat*p.freq;
+  const cpnPmt=p.face*p.cpn/p.freq;
+  let pv=0;
+  for(let i=1;i<=nPeriods;i++) pv+=cpnPmt/Math.pow(1+y/p.freq,i);
+  pv+=p.face/Math.pow(1+y/p.freq,nPeriods);
+  return pv;
+}
+
+// Black-Scholes for the embedded call
+function bsCall(S,K,T,r,v,q){
+  if(T<=0) return Math.max(0,S-K);
+  const d1=(Math.log(S/K)+(r-q+v*v/2)*T)/(v*Math.sqrt(T));
+  const d2=d1-v*Math.sqrt(T);
+  return S*Math.exp(-q*T)*ncdf(d1)-K*Math.exp(-r*T)*ncdf(d2);
+}
+
+// CB pricing using adjusted BS + bond floor
+function priceCB(p, stockOverride){
+  const S = stockOverride !== undefined ? stockOverride : p.S;
+  const convRatio = p.face / p.convPx;
+  const bf = bondFloor(p);
+  const parity = convRatio * S;
+  // Option value: BS call on conversion ratio shares, adjusted for credit and dividends
+  const adjR = p.rf; // risk-free for option
+  const optVal = convRatio * bsCall(S, p.convPx, p.mat, adjR, p.vol, p.divY);
+  // CB value = max(bond floor, parity) + time value of option
+  const timeValue = Math.max(0, optVal - Math.max(0, parity - bf));
+  const tv = bf + timeValue;
+  // Soft call adjustment: reduce value if stock > trigger
+  let softCallAdj = 0;
+  if(S > p.convPx * p.softCall && p.mat > p.softCallYr) {
+    softCallAdj = (tv - Math.max(parity, bf)) * 0.15; // approximate value reduction
+  }
+  const cbValue = Math.max(bf, Math.max(parity, tv - softCallAdj));
+  return {cbValue, bf, optVal, parity, convRatio, timeValue};
+}
+
+// Greeks via finite differences
+function greeks(p){
+  const {cbValue:v0} = priceCB(p);
+  const dS = p.S * 0.01;
+  const {cbValue:vUp} = priceCB(p, p.S + dS);
+  const {cbValue:vDn} = priceCB(p, p.S - dS);
+  const delta = (vUp - vDn) / (2 * dS);
+  const gamma = (vUp - 2*v0 + vDn) / (dS * dS);
+  // Vega
+  const pUp = {...p, vol: p.vol + 0.01};
+  const pDn = {...p, vol: p.vol - 0.01};
+  const vega = (priceCB(pUp).cbValue - priceCB(pDn).cbValue) / 2;
+  // Rho
+  const pRu = {...p, rf: p.rf + 0.01};
+  const pRd = {...p, rf: p.rf - 0.01};
+  const rho = (priceCB(pRu).cbValue - priceCB(pRd).cbValue) / 2;
+  // Theta (1 day)
+  const pT = {...p, mat: p.mat - 1/365};
+  const theta = priceCB(pT).cbValue - v0;
+  return {delta, gamma, vega, rho, theta};
+}
+
+// Capex NPV
+function capexNPV(p){
+  // Simplified: project generates cash flows starting after ramp-up
+  // Annual CF = capex * project IRR (simplified)
+  const annCF = p.capex * p.projIRR;
+  let npv = -p.capex;
+  for(let y = 1; y <= p.cfDur; y++){
+    const cf = y <= p.rampUp ? annCF * (y / p.rampUp) * 0.5 : annCF;
+    npv += cf / Math.pow(1 + p.wacc, y);
+  }
+  return npv;
+}
+
+function runModel(){
+  const p = P();
+  const {cbValue, bf, optVal, parity, convRatio} = priceCB(p);
+  const gr = greeks(p);
+  const npv = capexNPV(p);
+  const convPrem = (p.convPx / p.S - 1);
+  const npvPerShare = npv / p.sharesOut;
+  const newShares = p.issueSize / p.convPx;
+  const dilution = newShares / (p.sharesOut + newShares);
+  const adjStock = p.S + npvPerShare * p.capexProb * (1 - dilution);
+
+  // KPIs
+  const sk=(id,v,c)=>{const e=document.getElementById(id);e.textContent=v;e.className='v '+c};
+  sk('k-tv', '€'+cbValue.toFixed(2), 'neu');
+  sk('k-bf', '€'+bf.toFixed(2), 'wrn');
+  sk('k-ov', '€'+optVal.toFixed(2), 'prp');
+  sk('k-prem', (convPrem*100).toFixed(1)+'%', convPrem>0.3?'org':convPrem>0.15?'wrn':'pos');
+  sk('k-par', '€'+parity.toFixed(2), parity>bf?'pos':'wrn');
+  sk('k-delta', gr.delta.toFixed(3), 'neu');
+  sk('k-gamma', gr.gamma.toFixed(4), 'prp');
+  sk('k-vega', gr.vega.toFixed(2), 'wrn');
+  sk('k-rho', gr.rho.toFixed(2), 'org');
+  sk('k-theta', gr.theta.toFixed(3), 'neg');
+  sk('k-npv', '€'+npv.toFixed(0)+'m', npv>0?'pos':'neg');
+  sk('k-npvsh', '€'+npvPerShare.toFixed(2), npvPerShare>0?'pos':'neg');
+  sk('k-dil', (dilution*100).toFixed(1)+'%', dilution<0.05?'pos':dilution<0.1?'wrn':'neg');
+  sk('k-adjstk', '€'+adjStock.toFixed(2), adjStock>p.S?'pos':'neg');
+
+  // Decomposition table
+  const items = [
+    {n:'Bond Floor (PV coupons + face)', v:bf},
+    {n:'Equity Option Value (embedded call)', v:optVal},
+    {n:'Parity (conversion value)', v:parity},
+    {n:'Time Value Premium', v:cbValue-Math.max(bf,parity)},
+    {n:'Theoretical CB Value', v:cbValue, bold:true},
+  ];
+  document.getElementById('decompBody').innerHTML = items.map(i=>{
+    const bold = i.bold ? 'font-weight:700;border-top:2px solid #2d333b' : '';
+    return `<tr style="${bold}"><td>${i.n}</td><td class="n">€${i.v.toFixed(2)}</td><td class="n">${(i.v/cbValue*100).toFixed(1)}%</td></tr>`;
+  }).join('');
+
+  // Arb metrics
+  const cheapness = cbValue - (bf + optVal);
+  const yieldCB = p.cpn + (p.face - cbValue) / p.mat;
+  const yieldPrem = yieldCB - p.rf;
+  const breakeven = p.convPx * (1 + convPrem) - p.S;
+  const arbItems = [
+    {n:'Conversion Ratio', v:convRatio.toFixed(2)},
+    {n:'Conversion Premium', v:(convPrem*100).toFixed(1)+'%'},
+    {n:'Bond Floor Distance', v:((cbValue/bf-1)*100).toFixed(1)+'%'},
+    {n:'CB Yield (approx)', v:(yieldCB*100).toFixed(2)+'%'},
+    {n:'Yield Premium vs Rf', v:(yieldPrem*100).toFixed(2)+'%'},
+    {n:'Breakeven Stock Move', v:'€'+breakeven.toFixed(2)+' ('+(breakeven/p.S*100).toFixed(1)+'%)'},
+    {n:'Vol Implied in CB (approx)', v:(p.vol*100).toFixed(1)+'%'},
+    {n:'Delta Hedge Ratio', v:(-gr.delta*convRatio).toFixed(1)+' shares short'},
+    {n:'Capex NPV / CB Notional', v:(npv/p.issueSize*100).toFixed(1)+'%'},
+    {n:'Dilution-Adj NPV/Share', v:'€'+(npvPerShare*(1-dilution)).toFixed(2)},
+  ];
+  document.getElementById('arbBody').innerHTML = arbItems.map(i=>`<tr><td>${i.n}</td><td class="n">${i.v}</td></tr>`).join('');
+
+  // Chart 1: Payoff profile
+  const stockRange = [];
+  for(let s=p.S*(1-p.scRange); s<=p.S*(1+p.scRange); s+=p.S*0.02) stockRange.push(s);
+  const cbVals = stockRange.map(s => priceCB(p, s).cbValue);
+  const parVals = stockRange.map(s => (p.face/p.convPx)*s);
+  const bfLine = stockRange.map(() => bf);
+
+  dc('payoff');
+  CH.payoff = new Chart(document.getElementById('chPayoff'), {type:'line', data:{
+    labels: stockRange.map(s => s.toFixed(0)),
+    datasets:[
+      {data:cbVals, borderColor:'#79c0ff', borderWidth:2.5, pointRadius:0, tension:.3, label:'CB Value'},
+      {data:parVals, borderColor:'#3fb950', borderWidth:1.5, borderDash:[5,3], pointRadius:0, tension:0, label:'Parity'},
+      {data:bfLine, borderColor:'#d29922', borderWidth:1.5, borderDash:[3,3], pointRadius:0, tension:0, label:'Bond Floor'},
+    ]
+  }, options:{responsive:true, plugins:{legend:{labels:{color:'#8b949e'}}, annotation:{}}, scales:{
+    x:{title:{display:true,text:'Stock Price (€)',color:'#8b949e'},ticks:{color:'#8b949e',maxTicksLimit:10},grid:{color:'#1a1e28'}},
+    y:{title:{display:true,text:'CB Value (€)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}}
+  }}});
+
+  // Chart 2: Greeks
+  const deltas=[], gammas=[];
+  stockRange.forEach(s=>{
+    const dS=s*0.01;
+    const v0=priceCB(p,s).cbValue;
+    const vU=priceCB(p,s+dS).cbValue;
+    const vD=priceCB(p,s-dS).cbValue;
+    deltas.push((vU-vD)/(2*dS));
+    gammas.push((vU-2*v0+vD)/(dS*dS)*100); // scaled for visibility
+  });
+  dc('greeks');
+  CH.greeks = new Chart(document.getElementById('chGreeks'), {type:'line', data:{
+    labels: stockRange.map(s => s.toFixed(0)),
+    datasets:[
+      {data:deltas, borderColor:'#79c0ff', borderWidth:2, pointRadius:0, tension:.3, label:'Delta', yAxisID:'y'},
+      {data:gammas, borderColor:'#d2a8ff', borderWidth:2, pointRadius:0, tension:.3, label:'Gamma (×100)', yAxisID:'y1'},
+    ]
+  }, options:{responsive:true, plugins:{legend:{labels:{color:'#8b949e'}}}, scales:{
+    x:{ticks:{color:'#8b949e',maxTicksLimit:10},grid:{color:'#1a1e28'}},
+    y:{position:'left',title:{display:true,text:'Delta',color:'#79c0ff'},ticks:{color:'#79c0ff'},grid:{color:'#1a1e28'}},
+    y1:{position:'right',title:{display:true,text:'Gamma (×100)',color:'#d2a8ff'},ticks:{color:'#d2a8ff'},grid:{display:false}}
+  }}});
+
+  // Chart 3: Capex impact on CB
+  const irrRange = [5,8,10,12,15,18,20,25,30];
+  const cbNoCapex = cbValue;
+  const cbWithCapex = irrRange.map(irr=>{
+    const pp={...p, projIRR:irr/100};
+    const npvI = capexNPV(pp);
+    const adjS = p.S + (npvI/p.sharesOut) * p.capexProb * (1-dilution);
+    return priceCB(p, adjS).cbValue;
+  });
+  dc('capex');
+  CH.capex = new Chart(document.getElementById('chCapex'), {type:'bar', data:{
+    labels: irrRange.map(i=>i+'%'),
+    datasets:[
+      {data:cbWithCapex, backgroundColor:irrRange.map(i=>i>p.wacc*100?'rgba(63,185,80,.6)':'rgba(248,81,73,.5)'), borderWidth:0, borderRadius:3, label:'CB Value (adj for capex NPV)'},
+      {data:irrRange.map(()=>cbNoCapex), type:'line', borderColor:'#79c0ff', borderWidth:2, borderDash:[5,3], pointRadius:0, label:'CB Value (no capex adj)'},
+    ]
+  }, options:{responsive:true, plugins:{legend:{labels:{color:'#8b949e'}}}, scales:{
+    x:{title:{display:true,text:'Project IRR',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{display:false}},
+    y:{title:{display:true,text:'CB Value (€)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}}
+  }}});
+
+  // Chart 4: Sensitivity vol × spread
+  const vols=[15,20,25,30,35,40];
+  const spreads=[100,200,300,400,500];
+  const sensData = vols.map((v,vi)=>({
+    label:v+'% vol',
+    data:spreads.map(cs=>{
+      const pp={...p, vol:v/100, cs:cs/10000};
+      return priceCB(pp).cbValue;
+    }),
+    borderColor:['#8b949e','#58a6ff','#d2a8ff','#3fb950','#d29922','#f85149'][vi],
+    borderWidth:2, pointRadius:3, tension:.3
+  }));
+  dc('sens');
+  CH.sens = new Chart(document.getElementById('chSens'), {type:'line', data:{
+    labels:spreads.map(s=>s+'bps'), datasets:sensData
+  }, options:{responsive:true, plugins:{legend:{labels:{color:'#8b949e'}}}, scales:{
+    x:{title:{display:true,text:'Credit Spread',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}},
+    y:{title:{display:true,text:'CB Value (€)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}}
+  }}});
+
+  // Chart 6: YTM vs stock price
+  const ytms = stockRange.map(s=>{
+    const cv = priceCB(p, s).cbValue;
+    // Approx YTM: (coupon + (face-price)/mat) / ((face+price)/2)
+    const ytm = (p.face*p.cpn + (p.face - cv)/p.mat) / ((p.face + cv)/2);
+    return ytm * 100;
+  });
+  dc('ytm');
+  CH.ytm = new Chart(document.getElementById('chYTM'), {type:'line', data:{
+    labels: stockRange.map(s=>s.toFixed(0)),
+    datasets:[
+      {data:ytms, borderColor:'#d29922', borderWidth:2, pointRadius:0, tension:.3, label:'CB YTM'},
+      {data:stockRange.map(()=>(p.rf+p.cs)*100), borderColor:'#f85149', borderWidth:1.5, borderDash:[4,3], pointRadius:0, label:'Straight Bond Yield'},
+      {data:stockRange.map(()=>p.rf*100), borderColor:'#8b949e', borderWidth:1, borderDash:[2,2], pointRadius:0, label:'Risk-Free Rate'},
+    ]
+  }, options:{responsive:true, plugins:{legend:{labels:{color:'#8b949e'}}}, scales:{
+    x:{title:{display:true,text:'Stock Price (€)',color:'#8b949e'},ticks:{color:'#8b949e',maxTicksLimit:10},grid:{color:'#1a1e28'}},
+    y:{title:{display:true,text:'Yield (%)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}}
+  }}});
+}
+
+function runCapexScenarios(){
+  const p=P();
+  const scenarios=[
+    {name:'Capex Fails\n(NPV = 0)',irrM:0,probM:0,col:'#f85149'},
+    {name:'Capex Delayed\n(IRR halved)',irrM:0.5,probM:0.5,col:'#f0883e'},
+    {name:'Base Case',irrM:1,probM:1,col:'#79c0ff'},
+    {name:'Capex Exceeds\n(IRR +50%)',irrM:1.5,probM:1,col:'#3fb950'},
+    {name:'Home Run\n(IRR ×2)',irrM:2,probM:1,col:'#d2a8ff'},
+  ];
+  const results = scenarios.map(sc=>{
+    const pp={...p, projIRR:p.projIRR*sc.irrM, capexProb:p.capexProb*sc.probM};
+    const npvI=sc.irrM===0?-p.capex*0.3:capexNPV(pp);
+    const newSh=p.issueSize/p.convPx;
+    const dil=newSh/(p.sharesOut+newSh);
+    const adjS=p.S+(npvI/p.sharesOut)*pp.capexProb*(1-dil);
+    const cbV=priceCB(p,Math.max(1,adjS)).cbValue;
+    return {...sc,cbV,adjS,npvI};
+  });
+  dc('scenario');
+  CH.scenario=new Chart(document.getElementById('chScenario'),{type:'bar',data:{
+    labels:results.map(r=>r.name),
+    datasets:[
+      {label:'CB Value',data:results.map(r=>r.cbV),backgroundColor:results.map(r=>r.col),borderWidth:0,borderRadius:4},
+    ]
+  },options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false}},scales:{
+    x:{title:{display:true,text:'CB Value (€)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}},
+    y:{ticks:{color:'#e6edf3',font:{size:11}},grid:{display:false}}
+  }}});
+}
+
+function runFinancingComp(){
+  const p=P();
+  const seniorRate=+document.getElementById('seniorRate').value/100;
+  const seniorMat=+document.getElementById('seniorMat').value;
+  const eqDiscount=+document.getElementById('eqDiscount').value/100;
+  const eqIssueCost=+document.getElementById('eqIssueCost').value/100;
+  const cbIssueCost=+document.getElementById('cbIssueCost').value/100;
+  const taxRate=+document.getElementById('taxRate').value/100;
+  const targetDE=+document.getElementById('targetDE').value;
+  const amt=p.issueSize;
+
+  // CB analysis
+  const cbCouponCost=p.cpn*amt; // annual coupon
+  const cbAfterTax=cbCouponCost*(1-taxRate);
+  const cbDilutionIfConvert=amt/p.convPx/(p.sharesOut+amt/p.convPx);
+  const cbNetProceeds=amt*(1-cbIssueCost);
+  const cbEffRate=cbAfterTax/cbNetProceeds;
+
+  // Senior debt
+  const debtInterest=seniorRate*amt;
+  const debtAfterTax=debtInterest*(1-taxRate);
+  const debtNetProceeds=amt*0.99; // ~1% issuance
+  const debtEffRate=debtAfterTax/debtNetProceeds;
+  const debtDEImpact=amt/p.mktCap; // adds to D/E
+
+  // Equity
+  const eqPxIssue=p.S*(1-eqDiscount);
+  const eqShares=amt/eqPxIssue;
+  const eqDilution=eqShares/(p.sharesOut+eqShares);
+  const eqNetProceeds=amt*(1-eqIssueCost);
+  const eqEffRate=0; // no interest cost
+
+  // Existing EPS assumption
+  const existingNetIncome=p.mktCap*0.06; // assume 6% earnings yield
+  const currentEPS=existingNetIncome/p.sharesOut;
+
+  // Project incremental income (at steady state)
+  const projIncome=p.capex*p.projIRR*(1-taxRate)*p.capexProb;
+
+  // EPS by method
+  const epsCB=(existingNetIncome+projIncome-cbAfterTax)/p.sharesOut;
+  const epsDebt=(existingNetIncome+projIncome-debtAfterTax)/p.sharesOut;
+  const epsEq=(existingNetIncome+projIncome)/(p.sharesOut+eqShares);
+
+  // EPS accretion/dilution
+  const epsAccCB=(epsCB-currentEPS)/currentEPS;
+  const epsAccDebt=(epsDebt-currentEPS)/currentEPS;
+  const epsAccEq=(epsEq-currentEPS)/currentEPS;
+
+  // WACC impact
+  const existingDebt=p.mktCap*targetDE;
+  const existingEV=p.mktCap+existingDebt;
+  const keExisting=p.rf+0.06; // assume 6% ERP * beta ~1
+  const waccBase=(p.mktCap/existingEV)*keExisting+(existingDebt/existingEV)*seniorRate*(1-taxRate);
+
+  const waccCB_ev=existingEV+amt;
+  const waccCB=(p.mktCap/waccCB_ev)*keExisting+((existingDebt+amt*0.6)/waccCB_ev)*p.cpn*(1-taxRate)+((amt*0.4)/waccCB_ev)*keExisting;
+  const waccDebt_ev=existingEV+amt;
+  const waccDebt=(p.mktCap/waccDebt_ev)*keExisting+((existingDebt+amt)/waccDebt_ev)*seniorRate*(1-taxRate);
+  const waccEq_ev=existingEV+amt;
+  const waccEq=((p.mktCap+amt)/waccEq_ev)*keExisting+(existingDebt/waccEq_ev)*seniorRate*(1-taxRate);
+
+  // KPI cards
+  const sk=(id,v)=>document.getElementById(id).textContent=v;
+  sk('fin-cb', (cbEffRate*100).toFixed(2)+'% eff. cost');
+  sk('fin-cb-sub', 'Dilution if convert: '+(cbDilutionIfConvert*100).toFixed(1)+'% | EPS: '+(epsAccCB>0?'+':'')+(epsAccCB*100).toFixed(1)+'%');
+  sk('fin-debt', (debtEffRate*100).toFixed(2)+'% eff. cost');
+  sk('fin-debt-sub', 'D/E impact: +'+(debtDEImpact*100).toFixed(1)+'% | EPS: '+(epsAccDebt>0?'+':'')+(epsAccDebt*100).toFixed(1)+'%');
+  sk('fin-eq', '0% interest cost');
+  sk('fin-eq-sub', 'Dilution: '+(eqDilution*100).toFixed(1)+'% | EPS: '+(epsAccEq>0?'+':'')+(epsAccEq*100).toFixed(1)+'%');
+
+  // Comparison table
+  const rows=[
+    {m:'Annual Interest Cost',cb:'€'+cbCouponCost.toFixed(1)+'m',dt:'€'+debtInterest.toFixed(1)+'m',eq:'€0'},
+    {m:'After-Tax Cost',cb:'€'+cbAfterTax.toFixed(1)+'m',dt:'€'+debtAfterTax.toFixed(1)+'m',eq:'€0'},
+    {m:'Effective Rate (after tax)',cb:(cbEffRate*100).toFixed(2)+'%',dt:(debtEffRate*100).toFixed(2)+'%',eq:'0%'},
+    {m:'Net Proceeds',cb:'€'+cbNetProceeds.toFixed(0)+'m',dt:'€'+debtNetProceeds.toFixed(0)+'m',eq:'€'+eqNetProceeds.toFixed(0)+'m'},
+    {m:'Immediate Dilution',cb:'0%',dt:'0%',eq:(eqDilution*100).toFixed(1)+'%'},
+    {m:'Contingent Dilution',cb:(cbDilutionIfConvert*100).toFixed(1)+'%',dt:'0%',eq:'n/a'},
+    {m:'D/E Ratio Impact',cb:'Hybrid (+60% debt)',dt:'+'+(debtDEImpact*100).toFixed(1)+'%',eq:'Reduces D/E'},
+    {m:'EPS (post project)',cb:'€'+epsCB.toFixed(2),dt:'€'+epsDebt.toFixed(2),eq:'€'+epsEq.toFixed(2)},
+    {m:'EPS Accretion/Dilution',cb:(epsAccCB>0?'+':'')+(epsAccCB*100).toFixed(1)+'%',dt:(epsAccDebt>0?'+':'')+(epsAccDebt*100).toFixed(1)+'%',eq:(epsAccEq>0?'+':'')+(epsAccEq*100).toFixed(1)+'%'},
+    {m:'WACC Impact',cb:(waccCB*100).toFixed(2)+'%',dt:(waccDebt*100).toFixed(2)+'%',eq:(waccEq*100).toFixed(2)+'%'},
+    {m:'Rating Agency View',cb:'Moderate concern',dt:'Negative watch',eq:'Positive'},
+    {m:'Investor Signal',cb:'Mgmt bullish (conv premium)',dt:'Neutral',eq:'Mgmt thinks stock overvalued'},
+  ];
+  let thtml='<table class="at"><thead><tr><th>Metric</th><th style="text-align:right;color:#79c0ff">CB</th><th style="text-align:right;color:#f0883e">Senior Debt</th><th style="text-align:right;color:#3fb950">Equity</th></tr></thead><tbody>';
+  rows.forEach(r=>{thtml+=`<tr><td>${r.m}</td><td class="n">${r.cb}</td><td class="n">${r.dt}</td><td class="n">${r.eq}</td></tr>`});
+  thtml+='</tbody></table>';
+  document.getElementById('finTableWrap').innerHTML=thtml;
+
+  // Cost of capital over time chart
+  const years=[1,2,3,4,5,6,7,8,9,10];
+  const cbCosts=years.map(y=>{
+    const probConv=Math.min(1,0.1*y); // increasing prob of conversion
+    return cbAfterTax/amt*100*(1-probConv) + keExisting*100*probConv*cbDilutionIfConvert;
+  });
+  const debtCosts=years.map(y=>y<=seniorMat ? debtAfterTax/amt*100 : debtAfterTax/amt*100*1.2); // refinance risk
+  const eqCosts=years.map(y=>keExisting*100*eqDilution);
+
+  dc('fincomp');
+  CH.fincomp=new Chart(document.getElementById('chFinComp'),{type:'line',data:{
+    labels:years.map(y=>'Y'+y),
+    datasets:[
+      {data:cbCosts,borderColor:'#79c0ff',borderWidth:2.5,pointRadius:3,tension:.3,label:'CB'},
+      {data:debtCosts,borderColor:'#f0883e',borderWidth:2.5,pointRadius:3,tension:.3,label:'Senior Debt'},
+      {data:eqCosts,borderColor:'#3fb950',borderWidth:2.5,pointRadius:3,tension:.3,label:'Equity'},
+    ]
+  },options:{responsive:true,plugins:{legend:{labels:{color:'#8b949e'}}},scales:{
+    x:{ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}},
+    y:{title:{display:true,text:'Effective Cost (%)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}}
+  }}});
+
+  // EPS impact chart
+  const epsYears=[0,1,2,3,4,5];
+  const ramp=epsYears.map(y=>{
+    const projY=y<=p.rampUp ? projIncome*(y/p.rampUp)*0.5 : projIncome;
+    return {
+      cb:(existingNetIncome+projY-cbAfterTax)/p.sharesOut,
+      debt:(existingNetIncome+projY-debtAfterTax)/p.sharesOut,
+      eq:(existingNetIncome+projY)/(p.sharesOut+eqShares),
+      base:currentEPS
+    };
+  });
+  dc('eps');
+  CH.eps=new Chart(document.getElementById('chEPS'),{type:'line',data:{
+    labels:epsYears.map(y=>'Y'+y),
+    datasets:[
+      {data:ramp.map(r=>r.cb),borderColor:'#79c0ff',borderWidth:2.5,pointRadius:4,tension:.3,label:'CB'},
+      {data:ramp.map(r=>r.debt),borderColor:'#f0883e',borderWidth:2.5,pointRadius:4,tension:.3,label:'Senior Debt'},
+      {data:ramp.map(r=>r.eq),borderColor:'#3fb950',borderWidth:2.5,pointRadius:4,tension:.3,label:'Equity'},
+      {data:ramp.map(r=>r.base),borderColor:'#8b949e',borderWidth:1.5,borderDash:[4,3],pointRadius:0,label:'Current EPS'},
+    ]
+  },options:{responsive:true,plugins:{legend:{labels:{color:'#8b949e'}}},scales:{
+    x:{title:{display:true,text:'Year',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}},
+    y:{title:{display:true,text:'EPS (€)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}}
+  }}});
+
+  // Dilution vs Cost scatter
+  const methods=[
+    {name:'CB (no conv)',x:0,y:cbEffRate*100,col:'#79c0ff',r:8},
+    {name:'CB (if conv)',x:cbDilutionIfConvert*100,y:cbEffRate*100*0.3,col:'#388bfd',r:8},
+    {name:'Senior Debt',x:0,y:debtEffRate*100,col:'#f0883e',r:8},
+    {name:'Equity',x:eqDilution*100,y:0,col:'#3fb950',r:8},
+    {name:'50/50 Debt+Equity',x:eqDilution*50,y:debtEffRate*50,col:'#d29922',r:6},
+  ];
+  dc('dilcost');
+  CH.dilcost=new Chart(document.getElementById('chDilCost'),{type:'scatter',data:{
+    datasets:methods.map(m=>({
+      label:m.name,data:[{x:m.x,y:m.y}],pointRadius:m.r,pointBackgroundColor:m.col,pointBorderColor:m.col,
+    }))
+  },options:{responsive:true,plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}},scales:{
+    x:{title:{display:true,text:'Dilution (%)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'},min:0},
+    y:{title:{display:true,text:'Annual Cost (%)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'},min:0}
+  }}});
+}
+
+function runNewIssueImpact(){
+  const p=P();
+  const niSize=+document.getElementById('niSize').value;
+  const niPrem=+document.getElementById('niPrem').value/100;
+  const niCoupon=+document.getElementById('niCoupon').value/100;
+  const niMat=+document.getElementById('niMat').value;
+  const sameIssuer=+document.getElementById('niSameIssuer').value;
+  const niVol=+document.getElementById('niVol').value/100;
+  const niAbsorb=+document.getElementById('niAbsorb').value;
+  const niExistSize=+document.getElementById('niExistSize').value;
+  const arbElast=+document.getElementById('niArbElast').value;
+
+  // Existing CB value before
+  const {cbValue:cbBefore, bf} = priceCB(p);
+
+  // --- IMPACT CHANNELS ---
+
+  // 1. Supply effect: more converts in market = selling pressure on existing CB
+  // Impact proportional to new issue size / existing float
+  const supplyRatio = niSize / niExistSize;
+  const supplyImpact = -supplyRatio * 0.015 * (1 - arbElast * 0.5); // dampened by arb demand
+
+  // 2. Vol repricing: new issue sets a new implied vol reference point
+  // If new issue vol > existing implied vol: existing CB reprices UP (vol is cheap)
+  // If new issue vol < existing implied vol: existing CB reprices DOWN
+  const volDiff = niVol - p.vol;
+  const volRepricing = volDiff * 0.4; // partial pass-through to existing CB implied vol
+  const newImpliedVol = p.vol + volRepricing;
+  const pVolAdj = {...p, vol: newImpliedVol};
+  const {cbValue:cbVolAdj} = priceCB(pVolAdj);
+  const volImpact = (cbVolAdj - cbBefore) / cbBefore;
+
+  // 3. Same issuer dilution effect
+  // If same issuer: additional potential dilution depresses stock & existing CB
+  let dilutionImpact = 0;
+  if(sameIssuer) {
+    const niConvPx = p.S * (1 + niPrem);
+    const addlShares = niSize / niConvPx;
+    const totalDilution = addlShares / (p.sharesOut + addlShares + p.face/p.convPx * niExistSize / p.face);
+    const stockImpact = -totalDilution * 0.7; // partial dilution pricing
+    const adjS = p.S * (1 + stockImpact);
+    const {cbValue:cbDilAdj} = priceCB(p, adjS);
+    dilutionImpact = (cbDilAdj - cbBefore) / cbBefore;
+  }
+
+  // 4. Credit spread impact (same issuer = more leverage)
+  let creditImpact = 0;
+  if(sameIssuer) {
+    const addlLeverage = niSize / p.mktCap;
+    const spreadWidening = addlLeverage * 100; // bps per unit of leverage
+    const pCreditAdj = {...p, cs: p.cs + spreadWidening/10000};
+    const {cbValue:cbCredAdj} = priceCB(pCreditAdj);
+    creditImpact = (cbCredAdj - cbBefore) / cbBefore;
+  }
+
+  // 5. Arb flow effect: new issue attracts convert arb capital
+  // Net positive for the market if new issue is "cheap" (arb buys NI, may also buy existing)
+  const arbFlowEffect = niVol > p.vol ? arbElast * 0.005 : -arbElast * 0.003;
+
+  // 6. Coupon comparison effect
+  // If new issue coupon < existing coupon: existing CB looks relatively more attractive
+  const couponEffect = (p.cpn - niCoupon) * 0.02;
+
+  // Total impact
+  const totalImpact = supplyImpact + volImpact + dilutionImpact + creditImpact + arbFlowEffect + couponEffect;
+  const cbAfter = cbBefore * (1 + totalImpact);
+
+  // Recovery timeline: market absorbs supply over niAbsorb days
+  // Price dips on announcement, partially recovers as arbs absorb
+  const timeline = [];
+  for(let d = 0; d <= niAbsorb * 3; d++) {
+    let dayImpact;
+    if(d === 0) dayImpact = 0;
+    else if(d === 1) dayImpact = totalImpact * 1.5; // overshoot on day 1
+    else if(d <= niAbsorb) dayImpact = totalImpact * (1.5 - 0.5 * (d-1) / niAbsorb); // gradual recovery
+    else dayImpact = totalImpact * (1 + arbFlowEffect * (d - niAbsorb) / niAbsorb); // arb absorption
+    timeline.push({day: d, price: cbBefore * (1 + dayImpact), impact: dayImpact * 100});
+  }
+
+  // KPI cards
+  const sk=(id,v,c)=>{const e=document.getElementById(id);e.textContent=v;e.className='v '+c};
+  sk('ni-before', '€'+cbBefore.toFixed(2), 'neu');
+  sk('ni-after', '€'+cbAfter.toFixed(2), totalImpact>0?'pos':'neg');
+  sk('ni-impact', (totalImpact>0?'+':'')+(totalImpact*100).toFixed(2)+'%', totalImpact>0?'pos':'neg');
+  sk('ni-volrep', (volRepricing>0?'+':'')+(volRepricing*100).toFixed(1)+' pts', volRepricing>0?'pos':'neg');
+  sk('ni-recov', '~'+Math.round(niAbsorb*1.5)+'d', 'wrn');
+
+  // Impact decomposition table
+  const impactRows = [
+    {n: 'Supply Pressure', v: supplyImpact, desc: 'New paper flooding market ('+niSize+'m / '+niExistSize+'m existing)'},
+    {n: 'Vol Repricing', v: volImpact, desc: 'New issue vol '+((niVol*100).toFixed(0))+'% vs existing '+(p.vol*100).toFixed(0)+'%'},
+    {n: 'Dilution Effect', v: dilutionImpact, desc: sameIssuer ? 'Additional shares if converted' : 'N/A (different issuer)'},
+    {n: 'Credit Impact', v: creditImpact, desc: sameIssuer ? 'Increased leverage on balance sheet' : 'N/A'},
+    {n: 'Arb Flow Effect', v: arbFlowEffect, desc: niVol>p.vol ? 'Cheap vol attracts arb capital (positive)' : 'Rich vol repels arb (negative)'},
+    {n: 'Coupon Comparison', v: couponEffect, desc: 'Existing cpn '+(p.cpn*100).toFixed(2)+'% vs new '+(niCoupon*100).toFixed(2)+'%'},
+    {n: 'TOTAL IMPACT', v: totalImpact, desc: '', bold: true},
+  ];
+  let html='<table class="at"><thead><tr><th>Channel</th><th style="text-align:right">Impact (%)</th><th>Driver</th></tr></thead><tbody>';
+  impactRows.forEach(r=>{
+    const c=r.v>=0?'pos':'neg';
+    const bold=r.bold?'font-weight:700;border-top:2px solid #2d333b':'';
+    html+=`<tr style="${bold}"><td>${r.n}</td><td class="n ${c}">${r.v>=0?'+':''}${(r.v*100).toFixed(2)}%</td><td style="font-size:10px;color:#8b949e">${r.desc}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('niTableWrap').innerHTML=html;
+
+  // Timeline chart
+  dc('nitl');
+  CH.nitl=new Chart(document.getElementById('chNITimeline'),{type:'line',data:{
+    labels:timeline.map(t=>'D'+t.day),
+    datasets:[
+      {data:timeline.map(t=>t.price),borderColor:'#f47067',borderWidth:2.5,pointRadius:0,tension:.3,fill:true,backgroundColor:'rgba(244,112,103,.08)',label:'Existing CB Price'},
+      {data:timeline.map(()=>cbBefore),borderColor:'#8b949e',borderWidth:1.5,borderDash:[4,3],pointRadius:0,label:'Pre-Announcement'},
+    ]
+  },options:{responsive:true,plugins:{legend:{labels:{color:'#8b949e'}}},scales:{
+    x:{title:{display:true,text:'Days Post-Announcement',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}},
+    y:{title:{display:true,text:'CB Price (€)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}}
+  }}});
+
+  // Vol surface shift
+  const deltas=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9];
+  const volBefore=deltas.map(d=>p.vol*100*(1+0.15*(0.5-d))); // simple skew
+  const volAfterArr=deltas.map((d,i)=>volBefore[i]+volRepricing*100*(1-0.3*Math.abs(d-0.5)));
+  dc('nivol');
+  CH.nivol=new Chart(document.getElementById('chNIVol'),{type:'line',data:{
+    labels:deltas.map(d=>d.toFixed(1)),
+    datasets:[
+      {data:volBefore,borderColor:'#8b949e',borderWidth:2,pointRadius:3,tension:.3,label:'Before New Issue'},
+      {data:volAfterArr,borderColor:'#f47067',borderWidth:2.5,pointRadius:3,tension:.3,label:'After New Issue'},
+      {data:deltas.map(()=>niVol*100),borderColor:'#d29922',borderWidth:1.5,borderDash:[4,3],pointRadius:0,label:'New Issue Implied Vol'},
+    ]
+  },options:{responsive:true,plugins:{legend:{labels:{color:'#8b949e'}}},scales:{
+    x:{title:{display:true,text:'Delta',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}},
+    y:{title:{display:true,text:'Implied Vol (%)',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{color:'#1a1e28'}}
+  }}});
+
+  // Impact by new issue size
+  const sizes=[100,200,300,400,500,750,1000,1500];
+  const impactBySize=sizes.map(sz=>{
+    const sr=sz/niExistSize;
+    const si=-sr*0.015*(1-arbElast*0.5);
+    const tot=si+volImpact+(sameIssuer?(dilutionImpact*sz/niSize+creditImpact*sz/niSize):0)+arbFlowEffect+couponEffect;
+    return tot*100;
+  });
+  dc('nisize');
+  CH.nisize=new Chart(document.getElementById('chNISize'),{type:'bar',data:{
+    labels:sizes.map(s=>'€'+s+'m'),
+    datasets:[{data:impactBySize,backgroundColor:impactBySize.map(v=>v>=0?'rgba(63,185,80,.5)':'rgba(244,112,103,.5)'),borderWidth:0,borderRadius:3,label:'Price Impact (%)'}]
+  },options:{responsive:true,plugins:{legend:{display:false}},scales:{
+    x:{title:{display:true,text:'New Issue Size',color:'#8b949e'},ticks:{color:'#8b949e'},grid:{display:false}},
+    y:{title:{display:true,text:'Impact on Existing CB (%)',color:'#8b949e'},ticks:{color:'#8b949e',callback:v=>v.toFixed(1)+'%'},grid:{color:'#1a1e28'}}
+  }}});
+}
+
+window.addEventListener('load',()=>{runModel();runCapexScenarios();runFinancingComp();runNewIssueImpact()});
+</script>
+</body>
+</html>
